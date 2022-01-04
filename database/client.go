@@ -18,7 +18,7 @@ type DBConfig struct {
 	DB       string
 }
 
-func Connect(config DBConfig) {
+func Connect(config DBConfig) *sql.DB {
 	db, err := sql.Open(config.Driver, fmt.Sprintf("%s:%s@%s/%s", config.User, config.Password, config.Host, config.DB))
 
 	if err != nil {
@@ -30,4 +30,6 @@ func Connect(config DBConfig) {
 	db.SetMaxIdleConns(10)
 
 	fmt.Println("Database Connected")
+
+	return db
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"devcode_2nd/activity_group"
 	"devcode_2nd/database"
 	"devcode_2nd/helper"
 	"encoding/json"
@@ -8,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/gorilla/mux"
 )
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
@@ -24,13 +27,35 @@ func main() {
 		User:     os.Getenv("MYSQL_USER"),
 		Password: os.Getenv("MYSQL_PASSWORD"),
 		Driver:   "mysql",
-		DB:       os.Getenv("MYQL_DBNAME"),
+		DB:       os.Getenv("MYSQL_DBNAME"),
 	}
 
-	database.Connect(dbConfig)
+	db := database.Connect(dbConfig)
 
-	http.HandleFunc("/", rootHandler)
+	activityGroupRepository := activity_group.NewRepository(db)
 
-	log.Fatalln(http.ListenAndServe(":8080", nil))
-	log.Println("Server listen on port 8080")
+	activityGroupService := activity_group.NewService(activityGroupRepository)
+
+	activityGroupHandler := activity_group.NewHandler(activityGroupService)
+
+	r := mux.NewRouter()
+
+	r.HandleFunc("/", rootHandler)
+	r.HandleFunc("/activity-groups", activityGroupHandler.GetAll).Methods("GET")
+	r.HandleFunc("/activity-groups/{id}", activityGroupHandler.GetByID).Methods("GET")
+	r.HandleFunc("/activity-groups", activityGroupHandler.Create).Methods("POST")
+	r.HandleFunc("/activity-groups/{id}", activityGroupHandler.Delete).Methods("DELETE")
+	r.HandleFunc("/activity-groups/{id}", activityGroupHandler.Update).Methods("PATCH")
+
+	r.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println(fmt.Sprintf("%s %s", r.Method, r.URL))
+			h.ServeHTTP(w, r)
+		})
+	})
+
+	http.Handle("/", r)
+
+	log.Fatalln(http.ListenAndServe(":3000", nil))
+	log.Println("Server listen on port 3000")
 }
